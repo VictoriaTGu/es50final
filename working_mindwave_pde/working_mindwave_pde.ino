@@ -16,15 +16,15 @@
 	#define ECHO 1
 
         // Ping Pong Machine Code
-        int motorpin = 9;
-        int servopin = 6;
-        int rawserial = 0;
+        const int motorpin = 9;
+        const int servopin = 6;
+        const int rawserial = 0;
+        
+        int num_raise = 0;
+        int num_lower = 0;
+        
 
         Servo myservo;                           
-
-
-
-        
 
 	//#define redLEDpin 3
 	//#define greenLEDpin 2
@@ -60,7 +60,23 @@
 	wave[6] --> lowGamma
 	wave[7] --> midGamma
 	*/
-
+        ////////////////////////////////
+		// Read data from Serial UART //
+		////////////////////////////////
+		byte ReadOneByte() {
+		  int ByteRead;
+		  while(!Serial.available());
+		  ByteRead = Serial.read();
+		  return ByteRead;
+		}
+  
+        // Ping Pong Code
+        void servospin(int angle){
+          myservo.attach(servopin);
+          myservo.write(angle);
+          //delay(100);
+          myservo.detach();
+        }
 
         //If there's no attention - i.e. not connected- pin 11 will blink. else pin 10 will blink
         
@@ -94,27 +110,9 @@
 		  // make sure that the default chip select pin is set to
 		  // output, even if you don't use it:
 		  pinMode(10, OUTPUT);
-                  pinMode(motorpin, OUTPUT);  
+                  pinMode(motorpin, OUTPUT); 
+                  
 		}
-		////////////////////////////////
-		// Read data from Serial UART //
-		////////////////////////////////
-		byte ReadOneByte() {
-		  int ByteRead;
-		  while(!Serial.available());
-		  ByteRead = Serial.read();
-		  return ByteRead;
-		}
-
-                // Ping Pong Code
-                void servospin(int angle){
-                  myservo.attach(servopin);
-                  myservo.write(angle);
-                  delay(100);
-                  myservo.detach();
-                }
-
-
 
 		void loop() {
 		  if(ReadOneByte() == 170) { // check 1st byte is sync byte (value must be 170)
@@ -169,20 +167,63 @@
                   servospin(95);
                   servospin((attention/5) + 80);
                 } */
-                servospin((attention/5) + 80);
-                /*if (attention = 0){
-                  analogWrite(motorpin, 0);
+                
+                //servospin((attention/5) + 80);
+                
+                servospin(70);
+                Serial.print("Spin");
+                Serial.println();
+                Serial.flush();
+                if (attention == 0){
+                  //analogWrite(motorpin, 0);
+                  Serial.print("Attention 0");
+                  Serial.println();
+                  Serial.flush();
                 }
                 else{
-                  int motorspeed = 150 + attention;
-                  analogWrite(motorpin, 150);
-                } */
-                analogWrite(motorpin, 240);
+                  // start the motor
+                  analogWrite(motorpin, 255);
+                } 
+                // Servo control
+                if (attention > 65){
+                   // raise ramp at most 3 times consecutively
+                   if(num_raise < 4){
+                       servospin(80);
+                       num_raise += 1;
+                       Serial.print("Raise ");
+                       Serial.print(num_raise);
+                       Serial.println();
+                       Serial.flush();
+                       
+                       // can now lower one more time
+                       if(num_lower > 0){
+                         num_lower -= 1;
+                       }
+                     }
+                 }
+                 else{
+                   if (attention < 40 && attention > 0){
+                     // lower ramp at most 3 times consecutively
+                     if(num_lower < 4){
+                       servospin(100);
+                       num_lower += 1;
+                       Serial.print("Lower ");
+                       Serial.print(num_lower);
+                       Serial.println();
+                       Serial.flush();
+                       
+                       // can now raise one more time
+                       if(num_raise > 0){
+                         num_raise -= 1;
+                       }
+                     }
+                   }
+                 }
                  
 
 
+	        }
 	      }
-	  }
-	  }
+	    }
 	  bigPacket = false;
 	  }
